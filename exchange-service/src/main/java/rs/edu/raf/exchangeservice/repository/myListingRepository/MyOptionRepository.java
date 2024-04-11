@@ -5,6 +5,7 @@ import rs.edu.raf.exchangeservice.domain.model.myListing.MyOption;
 
 
 public interface MyOptionRepository extends JpaRepository<MyOption, Long> {
-
-    MyOption findByContractSymbol(String contractSymbol);
+    MyOption findByTicker(String ticker);
+    MyOption findByMyOptionId(Long id);
+    MyOption findByContractSymbol(String symbol);
 }

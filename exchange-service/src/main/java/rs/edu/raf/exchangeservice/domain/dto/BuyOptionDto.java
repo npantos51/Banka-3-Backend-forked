@@ -12,15 +12,22 @@ import lombok.Setter;
 @NoArgsConstructor
 public class BuyOptionDto {
 
-    private Long employeeId;    //mora da stigne
-    private String contractSymbol;  //mora da stigne
-    private Integer amount; //mora da stigne
-    private boolean aon;
-    private boolean margine;
+    private Long employeeId;
+    private String ticker;
+    private Double price;
     private Double limitValue;
     private Double stopValue;
+    private boolean margine;
 
-    private String stockListing; //povezujemo ga sa Stock
-    private String optionType; //calls ili puts
+//    private Long employeeId;    //mora da stigne
+    private String contractSymbol;  //mora da stigne
+//    private Integer amount; //uvek 1
+//    private boolean aon;
+//    private boolean margine;
+//    private Double limitValue;
+//    private Double stopValue;
+//
+//    private String stockListing; //povezujemo ga sa Stock
+//    private String optionType; //calls ili puts
 
 }

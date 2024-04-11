@@ -17,8 +17,10 @@ public class MyOption implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long myOptionId;
+    private String ticker;
     private String contractSymbol;
-    private Integer amount;
+    private Double boughtPrice;
+    private Integer amount; //uvek 1
     @Version
     private Integer version;
 }

@@ -39,7 +39,7 @@ public class OptionOrderService {
 
     private final ActuaryRepository actuaryRepository;
 
-    private final MyOptionService myStockService;
+    private final MyOptionService myOptionService;
     private final BankServiceClient bankServiceClient;
 
     public CopyOnWriteArrayList<OptionOrder> ordersToBuy = new CopyOnWriteArrayList<>();
@@ -66,8 +66,10 @@ public class OptionOrderService {
 
         OptionOrder optionOrder = new OptionOrder();
         optionOrder.setEmployeeId(buyOptionDto.getEmployeeId());
-        optionOrder.setContractSymbol(buyOptionDto.getContractSymbol());
-        optionOrder.setAmount(buyOptionDto.getAmount());
+        optionOrder.setSymbol(buyOptionDto.getContractSymbol());
+        optionOrder.setPrice(buyOptionDto.getPrice());
+        optionOrder.setTicker(buyOptionDto.getTicker());
+
 
         if (actuaryRepository.findByEmployeeId(buyOptionDto.getEmployeeId()).isOrderRequest()){
             optionOrder.setStatus("WAITING");
@@ -87,25 +89,21 @@ public class OptionOrderService {
 
         //market order
         if (optionOrder.getStopValue() == 0.0 && optionOrder.getLimitValue() == 0.0)
-            optionOrder.setOptionType("MARKET");
+            optionOrder.setType("MARKET");
 
         //stop order
         if(optionOrder.getStopValue() != 0.0 && optionOrder.getLimitValue() == 0.0)
-            optionOrder.setOptionType("STOP");
+            optionOrder.setType("STOP");
 
         //limit order
         if(optionOrder.getStopValue() == 0.0 && optionOrder.getLimitValue() != 0.0)
-            optionOrder.setOptionType("LIMIT");
+            optionOrder.setType("LIMIT");
 
         //stop-limit order
         if(optionOrder.getStopValue() != 0.0 && optionOrder.getLimitValue() != 0.0)
-            optionOrder.setOptionType("STOP_LIMIT");
+            optionOrder.setType("STOP_LIMIT");
 
-        optionOrder.setStockListing(buyOptionDto.getStockListing());
-        optionOrder.setAmount(buyOptionDto.getAmount());
-        optionOrder.setAmountLeft(buyOptionDto.getAmount());
-        optionOrder.setAon(buyOptionDto.isAon());
-        optionOrder.setMargine(buyOptionDto.isMargine());
+        optionOrder.setMargin(buyOptionDto.isMargine());
 
         if (optionOrder.getStatus().equalsIgnoreCase("PROCESSING")){
             this.ordersToBuy.add(this.optionOrderRepository.save(optionOrder));
@@ -117,7 +115,7 @@ public class OptionOrderService {
 
     }
 
-    @Scheduled(fixedRate = 15000)
+    @Scheduled(fixedRate = 35000)
     public void executeTask() {
 
         if (ordersToBuy.isEmpty()) {
@@ -128,83 +126,57 @@ public class OptionOrderService {
             OptionOrder optionOrder = ordersToBuy.get(stockNumber);   //StockOrder koji obradjujemo
 
             Option option = null;
-            List<Option> list = this.optionRepository.findByStockListingAndOptionType(optionOrder.getStockListing(), optionOrder.getOptionType());
-            if(list.isEmpty()){
-                System.out.println("No options available with listing "+optionOrder.getStockListing()+", restarting in 15 seconds...");
-//                return;
+            Optional<Option> optionalOption = this.optionRepository.findByContractSymbol(optionOrder.getSymbol());
+//            Double currentPrice = optionOrder.getPrice();
+
+            if(optionalOption.isPresent())
+                option = optionalOption.get();
+            else {
+                System.out.println("No option available with symbol "+optionOrder.getSymbol()+", restarting in 15 seconds...");
+                return;
             }
-//            if(optionalOption.isPresent())
-//                option = optionalOption.get();
-//            else {
-//                System.out.println("No stocks available with ticker "+stockOrder.getTicker()+", restarting in 15 seconds...");
-//                return;
-//            }
 
             double currentPrice = option.getAsk();   //trenutna cena po kojoj kupujemo
 
-            int amountToBuy = rand.nextInt(optionOrder.getAmountLeft()) + 1;
+            if (optionOrder.getType().equals("MARKET")) {
+//                bankServiceClient.startStockTransaction(stockTransactionDto);
+                printer(1, currentPrice);
+                optionOrder.setStatus("FINISHED");
+                ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
 
-            //provera ako je allOrNon true
-            if (optionOrder.isAon()) {
-                if (amountToBuy != optionOrder.getAmountLeft()) {
-                    System.out.println("Couldn't buy all " + optionOrder.getAmountLeft());
-                    return;
-                }
+                myOptionService.addAmountToMyOptions(option.getContractSymbol(), 1);    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
+//                optionOrder.setAmountLeft(optionOrder.getAmountLeft() - amountToBuy);
+//                if (optionOrder.getAmountLeft() <= 0) {
+//                    optionOrder.setStatus("FINISHED");
+//                    ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
+//                } else {
+//                    ordersToBuy.remove(stockNumber);
+//                    ordersToBuy.add(stockNumber,optionOrder);    //update Objekta u listi
+//                }
             }
 
-            //kreirati stockTransactionDto koji sadrzi sracunatu kolicinu novca u zavisnosti od tipa stock-a,
-            //broj racuna banke, broj racuna berze.
-            StockTransactionDto stockTransactionDto = new StockTransactionDto();
-
-            //TODO naci broj racuna banke i berze preko valute
-            stockTransactionDto.setAccountFrom("RACUN BANKE");
-            stockTransactionDto.setAccountTo("RACUN BERZE");
-
-            if (optionOrder.getOptionType().equals("MARKET")) {
-                stockTransactionDto.setAmount(currentPrice * amountToBuy);
-                bankServiceClient.startStockTransaction(stockTransactionDto);
-
-                myStockService.addAmountToMyStock(stockOrder.getTicker(), amountToBuy);    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
-                optionOrder.setAmountLeft(optionOrder.getAmountLeft() - amountToBuy);
-                if (optionOrder.getAmountLeft() <= 0) {
+            if (optionOrder.getType().equals("LIMIT")){
+                if (currentPrice < optionOrder.getLimitValue()){
+                    myOptionService.addAmountToMyOptions(optionOrder.getSymbol(), 1);    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
                     optionOrder.setStatus("FINISHED");
                     ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
-                } else {
-                    ordersToBuy.remove(stockNumber);
-                    ordersToBuy.add(stockNumber,optionOrder);    //update Objekta u listi
-                }
-            }
-
-            if (optionOrder.getOptionType().equals("LIMIT")){
-                if (currentPrice < optionOrder.getLimitValue()){
-                    stockTransactionDto.setAmount(currentPrice * amountToBuy);
-                    bankServiceClient.startStockTransaction(stockTransactionDto);
-                    myStockService.addAmountToMyStock(stockOrder.getTicker(), amountToBuy);    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
-                    optionOrder.setAmountLeft(optionOrder.getAmountLeft() - amountToBuy);
-                    if (optionOrder.getAmountLeft() <= 0) {
-                        optionOrder.setStatus("FINISHED");
-                        ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
-                    }else {
-                        ordersToBuy.remove(stockNumber);
-                        ordersToBuy.add(stockNumber,optionOrder);    //update Objekta u listi
-                    }
                 } else {
                     optionOrder.setStatus("FAILED");
                     ordersToBuy.remove(stockNumber);
                 }
             }
 
-            if (optionOrder.getOptionType().equals("STOP")){
+            if (optionOrder.getType().equals("STOP")){
                 if (currentPrice > optionOrder.getStopValue()){
-                    optionOrder.setOptionType("MARKET");
+                    optionOrder.setType("MARKET");
                 } else {
                     System.out.println("Stop value hasn't been approved ");
                 }
             }
 
-            if (optionOrder.getOptionType().equals("STOP_LIMIT")){
+            if (optionOrder.getType().equals("STOP_LIMIT")){
                 if (currentPrice > optionOrder.getStopValue()){
-                    optionOrder.setOptionType("LIMIT");
+                    optionOrder.setType("LIMIT");
                 } else {
                     System.out.println("Stop value hasn't been approved ");
                 }

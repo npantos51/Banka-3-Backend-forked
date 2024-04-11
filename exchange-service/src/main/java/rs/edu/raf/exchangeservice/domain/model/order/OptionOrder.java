@@ -21,15 +21,15 @@ public class OptionOrder implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long optionOrderId;
     private Long employeeId;
-    private String contractSymbol;
-    private String status;  //PROCESSING, WAITING, FAILED, FINISHED
-    private String stockListing; //povezujemo ga sa Stock
-    private String optionType; //calls ili puts
-
+    private Double price;
+    private String symbol;
+    private String ticker;
+    private String status;  //PROCESSING, FAILED, FINISHED
+    private String type;    //MARKET, STOP, LIMIT, STOP-LIMIT
     private Double limitValue;
     private Double stopValue;
-    private int amount;
-    private int amountLeft;
-    private boolean aon;
-    private boolean margine;
+    //private int amount;        max 1  //ukupna kolicina
+    //private int amountLeft;    max 1 //koliko je ostalo da se kupi
+    //private boolean aon;
+    private boolean margin;
 }
