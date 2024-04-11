@@ -144,20 +144,12 @@ public class OptionOrderService {
                 optionOrder.setStatus("FINISHED");
                 ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
 
-                myOptionService.addAmountToMyOptions(option.getContractSymbol(), 1);    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
-//                optionOrder.setAmountLeft(optionOrder.getAmountLeft() - amountToBuy);
-//                if (optionOrder.getAmountLeft() <= 0) {
-//                    optionOrder.setStatus("FINISHED");
-//                    ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
-//                } else {
-//                    ordersToBuy.remove(stockNumber);
-//                    ordersToBuy.add(stockNumber,optionOrder);    //update Objekta u listi
-//                }
+                myOptionService.addAmountToMyOptions(option.getContractSymbol(), 1, optionOrder.getTicker());    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
             }
 
             if (optionOrder.getType().equals("LIMIT")){
                 if (currentPrice < optionOrder.getLimitValue()){
-                    myOptionService.addAmountToMyOptions(optionOrder.getSymbol(), 1);    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
+                    myOptionService.addAmountToMyOptions(optionOrder.getSymbol(), 1, optionOrder.getTicker());    //dodajemo kolicinu kupljenih deonica u vlasnistvo banke
                     optionOrder.setStatus("FINISHED");
                     ordersToBuy.remove(stockNumber);    //uklanjamo ga iz liste jer je zavrsio
                 } else {

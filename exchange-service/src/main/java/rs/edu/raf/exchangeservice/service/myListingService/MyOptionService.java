@@ -20,7 +20,7 @@ public class MyOptionService {
     private final OptionRepository optionRepository;
 
     @Transactional
-    public void addAmountToMyOptions(String contractSymbol, Integer amount) {
+    public void addAmountToMyOptions(String contractSymbol, Integer amount, String ticker) {
         Option option = null;
         Optional<Option> optionalOption = optionRepository.findByContractSymbol(contractSymbol);
         if(!optionalOption.isEmpty()){
@@ -32,6 +32,7 @@ public class MyOptionService {
         myOption.setBoughtPrice(option.getPrice());
         myOption.setContractSymbol(option.getContractSymbol());
         myOption.setAmount(1);
+        myOption.setTicker(ticker);
         this.myOptionRepository.save(myOption);
     }
 }
